@@ -22,7 +22,7 @@ class FileReplace:
         self.line_replaces = line_replaces
 
     def __str__(self):
-        string = '\tFile: %s\n' % self.file
+        string = 'File: %s\n' % self.file
 
         for line_replace in self.line_replaces:
             string += str(line_replace)
@@ -35,47 +35,53 @@ class LineReplace:
         self.new = new
 
     def __str__(self):
-        string = '\t+ %s\'\n' % self.original.rstrip()
-        string += '\t- %s\'\n' % self.new.rstrip()
+        string = '\t+ %s\n' % self.original.rstrip()
+        string += '\t- %s\n' % self.new.rstrip()
 
         return string
 
 class SearchAndReplace:
+    __SYMBOL_PATTERN = r'([^a-zA-Z0-9_])(%s)([^a-zA-Z0-9_])'
+    __SYMBOL_REPLACEMENT = r'\1%s\3'
+
     def __init__(self, grep, directories):
         self.grep = grep
         self.directories = directories
 
-    def find(self, pattern):
-        for directory in self.directories:
-            if any(self.grep.find_files_recursive(directory, pattern)):
-                return True
+    def replace_symbol(self, symbol, substitute):
+        pattern = self.__SYMBOL_PATTERN % symbol
+        replacement = self.__SYMBOL_REPLACEMENT % substitute
 
-        return False
+        return self.replace(pattern, replacement)
+
+    def replace_symbol_in_file(self, filepath, symbol, substitute):
+        pattern = self.__SYMBOL_PATTERN % symbol
+        replacement = self.__SYMBOL_REPLACEMENT % substitute
+
+        return self.replace_in_file(filepath, pattern, replacement)
 
     def replace(self, pattern, replacement):
         file_replaces = []
 
         for directory in self.directories:
-            for filepath in self.grep.find_files_recursive(directory, pattern):
+            for filepath in self.grep.find_recursive(directory, pattern):
                 file_replaces.append(
                     self.replace_in_file(filepath, pattern, replacement)
                 )
 
         return FileReplaceCollection(file_replaces)
 
-
-
     def replace_in_file(self, filepath, pattern, replacement):
         line_replaces = []
 
         with open(filepath, 'r') as lines:
             for line in lines:
-                line_replaces.append(
-                    LineReplace(
-                        line,
-                        re.sub(pattern, replacement, line)
-                    )
+                line_replace = LineReplace(
+                    line,
+                    re.sub(pattern, replacement, line)
                 )
+
+                line_replaces.append(line_replace)
 
         with open(filepath, 'w') as writer:
             for line_replace in line_replaces:
@@ -85,4 +91,10 @@ class SearchAndReplace:
             lambda line_replace: line_replace.new != line_replace.original,
             line_replaces
         ))
-        
+
+    def find(self, pattern):
+        for directory in self.directories:
+            yield from self.grep.match_recursive(directory, pattern)
+
+    def find_in_file(self, pattern, filepath):
+        return self.grep.match(filepath, pattern)

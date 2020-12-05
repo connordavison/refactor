@@ -2,16 +2,15 @@ import sys
 
 from SearchAndReplace import SearchAndReplace
 from Grep import Grep
-from InterfaceRenamer import InterfaceRenamer
+from InterfaceRenamer import LocalInterfaceRenamer, ExportedInterfaceRenamer
 
 directories = sys.argv
 grep = Grep()
-searchAndReplacer = SearchAndReplace(Grep(), directories)
-renamer = InterfaceRenamer(searchAndReplacer)
+search_and_replace = SearchAndReplace(grep, directories)
+renamers = [
+    LocalInterfaceRenamer(search_and_replace),
+    ExportedInterfaceRenamer(search_and_replace),
+]
 
-for directory in directories:
-    for filepath in grep.find_files_recursive(directory, r'interface (I[A-Z][a-zA-Z0-9]+)'):
-        with open(filepath, 'r') as lines:
-            for line in lines:
-                for candidate in renamer.find_candidates(line):
-                    renamer.refactor(candidate)
+for renamer in renamers:
+    renamer.refactor_all()
