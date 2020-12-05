@@ -54,6 +54,16 @@ class SearchAndReplace:
 
         return self.replace(pattern, replacement)
 
+    def replace_symbol_in_files(self, filepaths, symbol, substitute):
+        file_replaces = []
+
+        for filepath in filepaths:
+            file_replaces.append(
+                self.replace_symbol_in_file(filepath, symbol, substitute)
+            )
+
+        return FileReplaceCollection(file_replaces)
+
     def replace_symbol_in_file(self, filepath, symbol, substitute):
         pattern = self.__SYMBOL_PATTERN % symbol
         replacement = self.__SYMBOL_REPLACEMENT % substitute
@@ -91,6 +101,12 @@ class SearchAndReplace:
             lambda line_replace: line_replace.new != line_replace.original,
             line_replaces
         ))
+
+    def find_all_symbols(self, symbol):
+        return self.find(self.__SYMBOL_PATTERN % r'([A-Za-z_][a-zA-Z0-9]+)')
+
+    def find_symbol(self, symbol):
+        return self.find(self.__SYMBOL_PATTERN % symbol)
 
     def find(self, pattern):
         for directory in self.directories:
